@@ -9,9 +9,10 @@ import (
 	"time"
 )
 
-func AsyncProducer(ctx context.Context, address []string) {
+func AsyncProducer(ctx context.Context, topic string, address []string) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
+	config.Producer.RequiredAcks = sarama.WaitForAll
 	// config.Producer.Partitioner = 默认为message的hash
 	p, err := sarama.NewAsyncProducer(address, config)
 	if err != nil {
@@ -36,18 +37,17 @@ func AsyncProducer(ctx context.Context, address []string) {
 		}
 	}()
 
-	// 循环发送信息
-	srcValue := "this is a message. index=%d"
-	var i int
+	var messageIndex = 0
 _EXIT:
 	for {
-		i++
-		value := fmt.Sprintf(srcValue, i)
+		messageIndex++
+		value := fmt.Sprintf("this is a message. index=%d", messageIndex)
 		msg := &sarama.ProducerMessage{
-			Topic: "test",
+			Topic: topic,
 			Key:   sarama.ByteEncoder([]byte("login")),
 			Value: sarama.ByteEncoder(value),
 		}
+
 		select {
 		case p.Input() <- msg: // 发送消息
 			enqueued++

@@ -12,18 +12,18 @@ import (
 )
 
 // 支持brokers cluster的消费者
-func ClusterConsumer(ctx context.Context, brokers, topics []string, groupId string) {
-	config := cluster.NewConfig()
-	config.Consumer.Return.Errors = true
-	config.Group.Return.Notifications = true
-	config.Consumer.Offsets.Initial = sarama.OffsetNewest
-	config.Consumer.Offsets.CommitInterval = time.Second
-	// config.Consumer.Offsets.AutoCommit.Enable = true
-	// config.Consumer.Offsets.AutoCommit.Interval = time.Second
+func ClusterConsumer(ctx context.Context, brokers, topics []string, groupId string, id int) {
+	cfg := cluster.NewConfig()
+	cfg.Consumer.Return.Errors = true
+	cfg.Group.Return.Notifications = true
+	cfg.Consumer.Offsets.Initial = sarama.OffsetNewest
+	cfg.Consumer.Offsets.CommitInterval = time.Second
+	// cfg.Consumer.Offsets.AutoCommit.Enable = true
+	// cfg.Consumer.Offsets.AutoCommit.Interval = time.Second
 
-	consumer, err := cluster.NewConsumer(brokers, groupId, topics, config)
+	consumer, err := cluster.NewConsumer(brokers, groupId, topics, cfg)
 	if err != nil {
-		log.Printf("%s: sarama.NewSyncProducer err, message=%s \n", groupId, err)
+		log.Printf("%s: sarama.NewSyncProducer err, message=%s \n", groupId, err.Error())
 		return
 	}
 	defer func() {
@@ -45,19 +45,19 @@ func ClusterConsumer(ctx context.Context, brokers, topics []string, groupId stri
 	}()
 
 	// consume messages, watch signals
-	var successes int
+	var success int
 _EXIT:
 	for {
 		select {
 		case msg, ok := <-consumer.Messages():
 			if ok {
-				_, _ = fmt.Fprintf(os.Stdout, "%s:%s/%d/%d\t%s\t%s\n", groupId, msg.Topic, msg.Partition, msg.Offset, msg.Key, msg.Value)
+				_, _ = fmt.Fprintf(os.Stdout, "%d >> %s:%s/%d/%d\t%s\t%s\n", id, groupId, msg.Topic, msg.Partition, msg.Offset, msg.Key, msg.Value)
 				consumer.MarkOffset(msg, "") // mark message as processed
-				successes++
+				success++
 			}
 		case <-ctx.Done():
 			break _EXIT
 		}
 	}
-	_, _ = fmt.Fprintf(os.Stdout, "%s consume %d messages \n", groupId, successes)
+	_, _ = fmt.Fprintf(os.Stdout, "%s consume %d messages \n", groupId, success)
 }
