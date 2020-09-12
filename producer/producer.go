@@ -1,4 +1,4 @@
-package kfk
+package main
 
 import (
 	"context"
